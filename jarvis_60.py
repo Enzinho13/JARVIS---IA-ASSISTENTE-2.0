@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""JARVIS v5.0 — Just A Rather Very Intelligent System"""
-
 import tkinter as tk
 from tkinter import scrolledtext, messagebox
 import threading, time, base64, io, os, json, queue, math
@@ -8,7 +6,6 @@ import winreg, sys, struct, asyncio, tempfile, subprocess, re
 from datetime import datetime
 from pathlib import Path
 
-# ── Dependências ────────────────────────────────────────────────────
 missing=[]
 try: from PIL import Image, ImageTk
 except ImportError: missing.append("Pillow")
@@ -47,7 +44,7 @@ if missing:
     print(f"Execute: py -3.11 -m pip install {' '.join(missing)}")
     input("Enter para sair..."); exit(1)
 
-# ── Paths ───────────────────────────────────────────────────────────
+
 APP_DIR  = Path(os.path.expanduser("~")) / "Documents" / "JARVIS"
 MEM_FILE = APP_DIR / "memory.json"
 CFG_FILE = APP_DIR / "config.json"
@@ -55,7 +52,6 @@ LOG_FILE = APP_DIR / "conversations.log"
 HIST_FILE= APP_DIR / "history.json"
 APP_DIR.mkdir(parents=True, exist_ok=True)
 
-# ── Paleta roxa premium ──────────────────────────────────────────
 C_BG     = "#07080f"
 C_BG2    = "#0d0e1a"
 C_DARK   = "#08091a"
@@ -77,7 +73,6 @@ FONT_MSG  = ("Segoe UI", 10)
 FONT_BTN  = ("Segoe UI", 9, "bold")
 FONT_MONO = ("Courier New", 9)
 
-# ── System Prompt ───────────────────────────────────────────────────
 SYSTEM_PROMPT="""Você é JARVIS — Just A Rather Very Intelligent System. A IA pessoal do Chefe. Baseado no JARVIS do Homem de Ferro — leal, preciso, perspicaz.
 
 IDENTIDADE:
@@ -109,7 +104,6 @@ REGRAS ABSOLUTAS DE COMUNICAÇÃO:
 - Texto puro — escreva exatamente como falaria em voz alta"""
 
 
-# ── Automação Avançada ───────────────────────────────────────────────
 import webbrowser, urllib.parse, ctypes, shutil
 
 USER     = os.environ.get("USERNAME","")
@@ -161,7 +155,6 @@ def _open_url(url):
         except:
             webbrowser.open(url)
 
-# ── Mapa de apps: nome → lista de caminhos possíveis ────────────────
 APP_PATHS = {
     "chrome":       [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
                      r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
@@ -205,7 +198,7 @@ APP_PATHS = {
     "visual studio code": None,
     "obs studio": None,
 }
-# Aliases
+
 APP_PATHS["google chrome"]       = APP_PATHS["chrome"]
 APP_PATHS["microsoft edge"]      = APP_PATHS["edge"]
 APP_PATHS["vs code"]             = APP_PATHS["vscode"]
@@ -243,7 +236,6 @@ def _open_app_by_name(candidate):
     import glob as _glob
     candidate = candidate.lower().strip(".,!? ")
 
-    # 1. Busca no mapa de caminhos conhecidos
     best_key = None
     for key in APP_PATHS:
         if key == candidate:
@@ -263,25 +255,20 @@ def _open_app_by_name(candidate):
             elif Path(p).exists():
                 subprocess.Popen(f'start "" "{p}"', shell=True)
                 return best_key
-        # Paths not found - try by name via start
         subprocess.Popen(f'start {best_key}', shell=True)
         return best_key
 
-    # 2. Tenta via shutil.which
     found = shutil.which(candidate) or shutil.which(candidate + ".exe")
     if found:
         subprocess.Popen(f'start "" "{found}"', shell=True)
         return candidate
 
-    # 3. Fallback: manda o Windows resolver
     subprocess.Popen(f'start {candidate}', shell=True)
     return candidate
 
 def run_automation(text_lower, original_text=""):
     t = text_lower.strip()
 
-    # ── ABRIR APP ───────────────────────────────────────────────────
-    # Apenas comandos diretos de abertura
     open_trigs = ["abrir o ","abrir a ","abra o ","abra a ","abre o ","abre a ","abrir ","abre "]
     for trig in open_trigs:
         if trig in t:
@@ -289,14 +276,12 @@ def run_automation(text_lower, original_text=""):
             candidate = " ".join(after.split()[:4]).strip(".,!?")
             is_site = any(s in candidate for s in SITES) or ("." in candidate.split()[-1] if candidate.split() else False)
             if not is_site:
-                # Só executa se o candidato bate com algo conhecido (evita falsos positivos)
                 cand_l = candidate.lower()
                 matched = any(key in cand_l or cand_l in key for key in APP_PATHS if key)
                 if matched:
                     result = _open_app_by_name(candidate)
                     return f"abrindo {result}"
 
-    # ── FECHAR APP ──────────────────────────────────────────────────
     close_trigs = ["fechar o ","fechar a ","feche o ","feche a ","fecha o ","fecha a ",
                    "fechar ","fecha ","encerrar ","encerra ","matar ","close "]
     for trig in close_trigs:
@@ -306,7 +291,6 @@ def run_automation(text_lower, original_text=""):
             subprocess.run(f'taskkill /f /im "{after}" 2>nul', shell=True, capture_output=True)
             return f"fechando {after}"
 
-    # ── PESQUISA WEB ────────────────────────────────────────────────
     yt_trigs = ["pesquisar no youtube ","pesquisa no youtube ","buscar no youtube ",
                 "busca no youtube ","procurar no youtube ","youtube pesquisa "]
     for trig in yt_trigs:
@@ -322,7 +306,6 @@ def run_automation(text_lower, original_text=""):
             _open_url(f"https://pt.wikipedia.org/w/index.php?search={q}")
             return f"pesquisando na Wikipedia"
 
-    # Apenas com prefixo explícito "no google" ou "jarvis pesquisa"
     google_trigs = ["pesquisar no google ","pesquisa no google ","buscar no google ",
                     "procurar no google ","pesquise no google "]
     for trig in google_trigs:
@@ -333,7 +316,6 @@ def run_automation(text_lower, original_text=""):
                 _open_url(f"https://www.google.com/search?q={q}")
                 return f"pesquisando '{after}' no Google"
 
-    # ── ABRIR SITE ──────────────────────────────────────────────────
     site_trigs = ["abrir o site ","abrir a site ","abre o site ","ir para o ","ir para ",
                   "acessar ","entrar no ","entrar na ","abrir site ","vai para "]
     for trig in site_trigs:
@@ -346,12 +328,10 @@ def run_automation(text_lower, original_text=""):
                 url = after if after.startswith("http") else f"https://{after}"
                 _open_url(url); return f"abrindo {after}"
 
-    # Sites conhecidos por nome direto
     for name, url in SITES.items():
         if f"abrir {name}" in t or f"abre {name}" in t or f"ir pro {name}" in t or f"ir para {name}" in t:
             _open_url(url); return f"abrindo {name}"
 
-    # ── VOLUME ──────────────────────────────────────────────────────
     ps_key = '(New-Object -ComObject WScript.Shell).SendKeys([char]{c})'
     if any(x in t for x in ["aumentar volume","aumenta volume","mais volume","volume mais alto","volume para cima"]):
         for _ in range(5): subprocess.run(f'powershell -c "{ps_key.format(c=175)}"', shell=True, capture_output=True)
@@ -366,7 +346,6 @@ def run_automation(text_lower, original_text=""):
         subprocess.run(f'powershell -c "{ps_key.format(c=173)}"', shell=True, capture_output=True)
         return "áudio desmutado"
 
-    # ── SCREENSHOT ──────────────────────────────────────────────────
     if any(x in t for x in ["screenshot","print screen","printscreen","tirar print","captura de tela"]):
         p = DESKTOP / f"screenshot_{datetime.now().strftime('%H%M%S')}.png"
         try:
@@ -374,19 +353,16 @@ def run_automation(text_lower, original_text=""):
             return f"screenshot salvo na área de trabalho"
         except: pass
 
-    # ── JANELAS ─────────────────────────────────────────────────────
     if any(x in t for x in ["minimizar tudo","mostrar área de trabalho","mostrar desktop","minimizar janelas"]):
         subprocess.run('powershell -c "(New-Object -ComObject Shell.Application).MinimizeAll()"', shell=True, capture_output=True)
         return "todas as janelas minimizadas"
 
-    # ── CRIAR PASTA ─────────────────────────────────────────────────
     for trig in ["criar pasta ","cria pasta ","nova pasta "]:
         if trig in t:
             name = t.split(trig,1)[1].strip().strip(".,!?").replace(" ","_")
             (DESKTOP/name).mkdir(exist_ok=True)
             return f"pasta '{name}' criada na área de trabalho"
 
-    # ── CRIAR ARQUIVO ────────────────────────────────────────────────
     for trig in ["criar arquivo ","cria arquivo ","novo arquivo "]:
         if trig in t:
             name = t.split(trig,1)[1].strip().strip(".,!?").replace(" ","_")
@@ -395,7 +371,6 @@ def run_automation(text_lower, original_text=""):
             subprocess.Popen(f'notepad.exe "{p}"', shell=True)
             return f"arquivo '{name}' criado e aberto"
 
-    # ── MODO CLARO / ESCURO ─────────────────────────────────────────
     if any(x in t for x in ["modo escuro","dark mode","tema escuro"]):
         subprocess.run('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize" /v AppsUseLightTheme /t REG_DWORD /d 0 /f', shell=True, capture_output=True)
         return "modo escuro ativado"
@@ -403,7 +378,6 @@ def run_automation(text_lower, original_text=""):
         subprocess.run('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize" /v AppsUseLightTheme /t REG_DWORD /d 1 /f', shell=True, capture_output=True)
         return "modo claro ativado"
 
-    # ── SISTEMA ──────────────────────────────────────────────────────
     if any(x in t for x in ["bloquear tela","bloquear pc","travar tela","lock screen"]):
         ctypes.windll.user32.LockWorkStation(); return "tela bloqueada"
     if any(x in t for x in ["desligar o pc","desligar pc","desliga o pc","desligar o computador"]):
@@ -415,7 +389,6 @@ def run_automation(text_lower, original_text=""):
     if any(x in t for x in ["modo sleep","suspender","hibernar","colocar pra dormir"]):
         subprocess.run("rundll32.exe powrprof.dll,SetSuspendState 0,1,0",shell=True); return "PC em modo sleep"
 
-    # ── HORA / DATA ─────────────────────────────────────────────────
     if any(x in t for x in ["que horas","hora atual","ver horas","horas são","hora é"]):
         now=datetime.now(); return f"são {now.strftime('%H:%M')} de {now.strftime('%d/%m/%Y')}"
     if any(x in t for x in ["que dia","qual a data","data de hoje","dia de hoje"]):
@@ -425,7 +398,6 @@ def run_automation(text_lower, original_text=""):
     return None  # nenhuma automação detectada
 
 
-# ── Helpers ─────────────────────────────────────────────────────────
 def load_config():
     if CFG_FILE.exists():
         try: return json.loads(CFG_FILE.read_text(encoding="utf-8"))
@@ -450,12 +422,10 @@ def load_history():
 
 def save_history(h):
     try:
-        # Remove image data antes de salvar — evita contaminar contexto futuro
         clean = []
         for m in h[-40:]:
             content = m.get("content","")
             if isinstance(content, list):
-                # Extrai apenas o texto da lista de conteúdo
                 text_parts = [c.get("text","") for c in content if isinstance(c,dict) and c.get("type")=="text"]
                 content = " ".join(text_parts).strip()
             if content:
@@ -508,7 +478,6 @@ def rms(data):
     shorts=struct.unpack(f"{count}h",data)
     return math.sqrt(sum(s*s for s in shorts)/count)
 
-# ── HUD Canvas ──────────────────────────────────────────────────────
 class HUDCanvas(tk.Canvas):
     """HUD animado — anel pulsante roxo estilo Iron Man"""
     def __init__(self,parent,**kw):
@@ -526,7 +495,6 @@ class HUDCanvas(tk.Canvas):
         elif self._p<0: self._pd=1
         cx,cy=w//2,h//2; r=min(w,h)//2-12
 
-        # Anéis externos com brilho pulsante
         for i,base_r in enumerate([r, r-16, r-30]):
             if base_r < 5: continue
             pulse = 0.4 + 0.6*self._p if i==0 else 0.2 + 0.3*self._p
@@ -540,7 +508,6 @@ class HUDCanvas(tk.Canvas):
             self.create_oval(cx-base_r,cy-base_r,cx+base_r,cy+base_r,
                              outline=c,width=width,tags="h")
 
-        # Linhas girando
         self._a = (self._a + 3) % 360
         n_lines = 12
         for i in range(n_lines):
@@ -554,32 +521,27 @@ class HUDCanvas(tk.Canvas):
                 fill=f"#{min(255,v):02x}{min(255,int(v*0.3)):02x}{min(255,v):02x}",
                 width=2,tags="h")
 
-        # Cruz central
         s=6
         self.create_line(cx-s,cy,cx+s,cy,fill="#c084fc",width=1,tags="h")
         self.create_line(cx,cy-s,cx,cy+s,fill="#c084fc",width=1,tags="h")
         self.create_oval(cx-3,cy-3,cx+3,cy+3,fill="#c084fc",outline="",tags="h")
 
-        # Scan line
         sy = (self._t * 3) % max(1,h)
         self.create_line(0,sy,w,sy,fill="#1a0a3e",width=1,tags="h")
 
         self.after(40,self._animate)
 
-# ── JARVIS App ──────────────────────────────────────────────────────
 class JarvisApp:
-    # Voz: pt-BR-AntonioNeural é a mais parecida com "Orus" disponível grátis
-    # Para usar outra voz, altere JARVIS_VOICE abaixo
     JARVIS_VOICE = "pt-BR-AntonioNeural"
-    JARVIS_RATE  = "+35%"   # Mais rápido
-    JARVIS_PITCH = "-8Hz"   # Tom mais grave
+    JARVIS_RATE  = "+35%"   
+    JARVIS_PITCH = "-8Hz"   
 
     def __init__(self):
         self.config  = load_config()
         self.memory  = load_memory()
         self.client  = None
-        self.past_history    = load_history()   # sessões anteriores — só consulta sob demanda
-        self.history         = []                  # sessão atual apenas
+        self.past_history    = load_history()  
+        self.history         = []                
         self.is_connected  = False
         self.is_screen_on  = False
         self.is_mic_on     = False
@@ -591,15 +553,14 @@ class JarvisApp:
         self.input_queue   = queue.Queue(maxsize=5)
         self.recognizer    = sr.Recognizer()
         self.tts_ready     = False
-        # Para feature de resumo de interrupção
-        self.current_speech_text = ""   # texto que Jarvis está falando agora
+        self.current_speech_text = ""  
         self.was_interrupted     = False
         self.interrupted_text    = ""
-        self.jarvis_muted        = False  # mute manual do Jarvis (sem parar fala)
-        self._hotkey_labels      = {}     # referências para atualizar UI
-        self._mouse_listener     = None   # pynput mouse listener
-        self._mic_device_idx     = None   # índice do dispositivo de microfone
-        self._listen_thread      = None   # thread única de escuta
+        self.jarvis_muted        = False  
+        self._hotkey_labels      = {}     
+        self._mouse_listener     = None   
+        self._mic_device_idx     = None   
+        self._listen_thread      = None   
 
         self._setup_gui()
         self._setup_tts()
@@ -610,7 +571,6 @@ class JarvisApp:
             self.api_entry.insert(0, self.config["api_key"])
             self.root.after(800, self.connect)
 
-    # ── GUI ──────────────────────────────────────────────────────────
     def _setup_gui(self):
         self.root = tk.Tk()
         self.root.title("JARVIS — AI Assistant")
@@ -627,13 +587,11 @@ class JarvisApp:
         hdr = tk.Frame(self.root, bg=C_BG)
         hdr.pack(fill=tk.X)
 
-        # Barra superior colorida
         top = tk.Canvas(hdr, bg=C_BG, height=3, highlightthickness=0)
         top.pack(fill=tk.X)
         def _draw_top(e=None):
             top.delete("all")
             w = top.winfo_width()
-            # Gradiente simulado: roxo escuro → brilhante → escuro
             for i in range(w):
                 t = i/max(w,1)
                 r = int(100 + 100*math.sin(math.pi*t))
@@ -642,10 +600,9 @@ class JarvisApp:
                 top.create_line(i,0,i,3,fill=f"#{r:02x}{g:02x}{b:02x}")
         top.bind("<Configure>", _draw_top)
 
-        # Conteúdo do header
         inn = tk.Frame(hdr, bg=C_BG); inn.pack(fill=tk.X, padx=24, pady=10)
 
-        # Logo
+        
         lf = tk.Frame(inn, bg=C_BG); lf.pack(side=tk.LEFT)
         title_f = tk.Frame(lf, bg=C_BG); title_f.pack(side=tk.LEFT, anchor=tk.W)
         tk.Label(title_f, text="◈ JARVIS", font=("Segoe UI", 28, "bold"),
@@ -653,13 +610,11 @@ class JarvisApp:
         tk.Label(title_f, text="  v6.0  ·  Groq AI  ·  Automação Avançada",
                  font=("Segoe UI", 9), bg=C_BG, fg=C_TEXT2).pack(side=tk.LEFT, pady=(14,0))
 
-        # Status pills
         rf = tk.Frame(inn, bg=C_BG); rf.pack(side=tk.RIGHT)
         self.pill_api    = self._pill(rf, "⬤  OFFLINE",  C_RED);   self.pill_api.pack(side=tk.LEFT, padx=4)
         self.pill_screen = self._pill(rf, "⬤  TELA OFF", C_DIM);   self.pill_screen.pack(side=tk.LEFT, padx=4)
         self.pill_mic    = self._pill(rf, "⬤  MIC OFF",  C_DIM);   self.pill_mic.pack(side=tk.LEFT, padx=4)
 
-        # Linha divisória
         div = tk.Canvas(hdr, bg=C_BG, height=1, highlightthickness=0)
         div.pack(fill=tk.X)
         div.bind("<Configure>", lambda e: (div.delete("all"),
@@ -669,12 +624,10 @@ class JarvisApp:
         main = tk.Frame(self.root, bg=C_BG)
         main.pack(fill=tk.BOTH, expand=True, padx=16, pady=(10,0))
 
-        # ── Coluna esquerda ────────────────────────────────────────
         lc = tk.Frame(main, bg=C_BG, width=220)
         lc.pack(side=tk.LEFT, fill=tk.Y, padx=(0,14))
         lc.pack_propagate(False)
 
-        # API Key
         self._sl(lc, "  CONFIGURAÇÃO")
         af = self._card(lc); af.pack(fill=tk.X, pady=(0,10))
         tk.Label(af, text="GROQ API KEY", font=FONT_MONO,
@@ -693,7 +646,6 @@ class JarvisApp:
             selectcolor=C_DARK, activebackground=C_PANEL, activeforeground=C_CYAN,
             font=("Segoe UI",8)).pack(anchor=tk.W, pady=(4,0))
 
-        # Controles
         self._sl(lc, "  CONTROLES")
         cf = self._card(lc); cf.pack(fill=tk.X, pady=(0,10))
         self.screen_btn = self._btn(cf, "📺  INICIAR TELA", self.toggle_screen, state=tk.DISABLED)
@@ -704,7 +656,6 @@ class JarvisApp:
         self.interrupt_btn.pack(fill=tk.X, pady=(0,4))
         self._btn(cf, "🗑  LIMPAR CHAT", self.clear_chat, color=C_TEXT2).pack(fill=tk.X)
 
-        # Microfone
         self._sl(lc, "  MICROFONE")
         mf = self._card(lc); mf.pack(fill=tk.X, pady=(0,10))
         tk.Label(mf, text="Dispositivo:", font=("Segoe UI",8),
@@ -719,7 +670,6 @@ class JarvisApp:
         self._btn(mf, "🔄  ATUALIZAR", self._refresh_mic_list, color=C_TEXT2).pack(fill=tk.X)
         self.root.after(500, self._refresh_mic_list)
 
-        # Atalhos
         self._sl(lc, "  ATALHOS DE TECLADO")
         hf = self._card(lc); hf.pack(fill=tk.X, pady=(0,10))
         self._hotkey_actions = [
@@ -750,7 +700,6 @@ class JarvisApp:
                  font=("Segoe UI",7), bg=C_PANEL, fg=C_DIM,
                  wraplength=190, justify=tk.LEFT).pack(anchor=tk.W, pady=(5,0))
 
-        # Sistema / HUD
         self._sl(lc, "  SISTEMA")
         self.hud = HUDCanvas(lc, width=210, height=210)
         self.hud.pack(pady=(0,6))
@@ -763,10 +712,8 @@ class JarvisApp:
         self.lbl_msgs.pack(anchor=tk.W)
         self._update_clock()
 
-        # ── Coluna direita ──────────────────────────────────────────
         rc = tk.Frame(main, bg=C_BG); rc.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Preview de tela
         pf = tk.Frame(rc, bg=C_PANEL, highlightthickness=1, highlightbackground=C_GLOW)
         pf.pack(fill=tk.X, pady=(0,8))
         ph = tk.Frame(pf, bg=C_DARK, pady=5); ph.pack(fill=tk.X)
@@ -782,7 +729,6 @@ class JarvisApp:
             400, 100, text="── Captura de tela inativa ──", fill=C_DIM,
             font=("Segoe UI",9))
 
-        # Chat
         ch = tk.Frame(rc, bg=C_BG); ch.pack(fill=tk.BOTH, expand=True)
         ch_hdr = tk.Frame(ch, bg=C_DARK, pady=5); ch_hdr.pack(fill=tk.X)
         tk.Label(ch_hdr, text="◈  INTERFACE DE COMUNICAÇÃO", font=("Segoe UI",9,"bold"),
@@ -796,7 +742,6 @@ class JarvisApp:
             spacing1=2, spacing3=2)
         self.chat_text.pack(fill=tk.BOTH, expand=True)
         self.chat_text.configure(state=tk.DISABLED)
-        # Tags de cor
         self.chat_text.tag_config("jarvis",   foreground=C_CYAN)
         self.chat_text.tag_config("user",     foreground=C_GREEN)
         self.chat_text.tag_config("system",   foreground=C_TEXT2)
@@ -874,7 +819,6 @@ class JarvisApp:
         self.lbl_sess.config(text=f"📅 {now:%d/%m/%Y} | Sessão #{self.memory.get('sessions_count',0)}")
         self.root.after(1000,self._update_clock)
 
-    # ── Conexão ──────────────────────────────────────────────────────
     def connect(self):
         key=self.api_entry.get().strip()
         if not key or "•" in key:
@@ -924,7 +868,6 @@ class JarvisApp:
             self.config["autostart"]=en; save_config(self.config)
             self.log(f"◈ Autostart {'ativado' if en else 'desativado'}.","system")
 
-    # ── Tela ─────────────────────────────────────────────────────────
     def toggle_screen(self):
         if not self.is_screen_on:
             self.is_screen_on=True
@@ -952,15 +895,13 @@ class JarvisApp:
                     t0=time.time()
                     shot=sct.grab(mon)
                     img=Image.frombytes("RGB",shot.size,shot.bgra,"raw","BGRX")
-                    # Preview — escala para preencher o canvas
                     cw=self.preview_canvas.winfo_width() or 800
                     ch=200
                     pv=img.copy(); pv.thumbnail((cw, ch))
                     ph=ImageTk.PhotoImage(pv)
                     self.preview_canvas.delete("all")
                     self.preview_canvas.create_image(cw//2, ch//2, image=ph, anchor="center")
-                    self.preview_canvas._img_ref=ph  # evita garbage collection
-                    # Imagem API a cada 1.5s
+                    self.preview_canvas._img_ref=ph 
                     now=time.time()
                     if now-t_api>=1.5:
                         ai=img.copy(); ai.thumbnail((960,540))
@@ -973,7 +914,6 @@ class JarvisApp:
 
 
 
-    # ── Lista e seleciona dispositivo de microfone ───────────────────
     def _refresh_mic_list(self):
         try:
             pa = pyaudio.PyAudio()
@@ -982,7 +922,6 @@ class JarvisApp:
                 info = pa.get_device_info_by_index(i)
                 if info["maxInputChannels"] > 0:
                     name = info["name"]
-                    # Filtra dispositivos de loopback/stereo mix
                     skip_keywords = ["stereo mix","wave out","what u hear","loopback",
                                      "mixagem estéreo","o que ouve","virtual","vb-audio","voicemeeter"]
                     is_loopback = any(kw in name.lower() for kw in skip_keywords)
@@ -1002,7 +941,6 @@ class JarvisApp:
             for label, idx in devices.items():
                 menu.add_command(label=label,
                     command=lambda l=label,i=idx: self._select_mic(l,i))
-                # Auto-seleciona o salvo ou o primeiro sem ⚠
                 if cfg_device and cfg_device in label:
                     best_idx=idx; best_label=label
                 elif best_idx is None and not label.startswith("⚠"):
@@ -1020,7 +958,6 @@ class JarvisApp:
         save_config(self.config)
         self.log(f"◈ Mic: {label.strip()}","system")
 
-        # ── Mute microfone do sistema ────────────────────────────────────
     def _set_mic_mute(self, mute: bool):
         if HAS_PYCAW:
             try:
@@ -1037,7 +974,6 @@ class JarvisApp:
                            shell=True,capture_output=True,timeout=1)
         except: pass
 
-    # ── Capturar hotkey — teclado OU botão do mouse ─────────────────
     def _capture_hotkey(self, key_id, lbl):
         if not HAS_KEYBOARD:
             self.log("✗ Instale: py -3.11 -m pip install keyboard pynput","error"); return
@@ -1055,7 +991,6 @@ class JarvisApp:
             self.log(f"◈ Hotkey '{key_id}' → {key_name}", "system")
             self.root.after(100, self._start_hotkey_listener)
 
-        # Thread que escuta teclado
         def wait_keyboard():
             try:
                 ev = keyboard.read_event(suppress=False)
@@ -1063,10 +998,9 @@ class JarvisApp:
                     save_and_update(ev.name.upper())
             except: pass
 
-        # Thread que escuta mouse (delay para ignorar o clique que abriu a captura)
         def wait_mouse():
             if not HAS_PYNPUT: return
-            time.sleep(0.5)  # aguarda o clique disparador terminar
+            time.sleep(0.5)  
             if captured[0]: return
             try:
                 from pynput import mouse as _m
@@ -1089,9 +1023,7 @@ class JarvisApp:
         threading.Thread(target=wait_keyboard, daemon=True).start()
         threading.Thread(target=wait_mouse,    daemon=True).start()
 
-    # ── Registrar todos os hotkeys (teclado + mouse) ────────────────
     def _start_hotkey_listener(self):
-        # ── Teclado ──
         if HAS_KEYBOARD:
             try: keyboard.unhook_all_hotkeys()
             except: pass
@@ -1108,7 +1040,6 @@ class JarvisApp:
                     try: keyboard.add_hotkey(key_name.lower(), fn, suppress=False)
                     except: pass
 
-        # ── Mouse (botões laterais e extras via pynput) ──
         if HAS_PYNPUT:
             from pynput import mouse as _pm
             if hasattr(self, '_mouse_listener') and self._mouse_listener:
@@ -1144,7 +1075,6 @@ class JarvisApp:
                 self._mouse_listener.daemon = True
                 self._mouse_listener.start()
 
-    # ── Mutar/desmutar Jarvis sem parar fala ─────────────────────────
     def _toggle_jarvis_mute(self):
         self.jarvis_muted = not self.jarvis_muted
         try: pygame.mixer.music.set_volume(0.0 if self.jarvis_muted else 0.95)
@@ -1152,7 +1082,6 @@ class JarvisApp:
         state = "🔇 MUTADO" if self.jarvis_muted else "🔊 ATIVO"
         self.root.after(0, self.log, f"◈ Jarvis {state}","system")
 
-        # ── Interromper Jarvis (botão) ────────────────────────────────────
     def interrupt_jarvis(self):
         if self.is_speaking:
             self._stop_speaking(interrupted=True)
@@ -1161,10 +1090,8 @@ class JarvisApp:
             if self.is_mic_on:
                 self.pill_mic.config(text="⬤ OUVINDO...",fg=C_GREEN)
 
-    # ── Microfone ────────────────────────────────────────────────────
     def toggle_mic(self):
         if not self.is_mic_on:
-            # Garante que nenhuma thread anterior ainda esta rodando
             if getattr(self, '_listen_thread', None) and self._listen_thread.is_alive():
                 self.log("◈ Aguardando thread anterior encerrar...","system")
                 self.is_mic_on=False
@@ -1188,7 +1115,6 @@ class JarvisApp:
         recognizer = sr.Recognizer()
         dev = self._mic_device_idx
 
-        # Testa o device; se falhar usa o padrão
         try:
             with sr.Microphone(device_index=dev, sample_rate=16000) as _t:
                 pass
@@ -1208,7 +1134,6 @@ class JarvisApp:
                 self.log(f"◈ Limiar: {recognizer.energy_threshold:.0f} | Pronto!","system")
 
                 while self.is_mic_on:
-                    # ── Jarvis falando — aguarda ──────────────────────────
                     if self.is_speaking:
                         self._set_mic_mute(True)
                         key = self.config.get("hotkeys",{}).get("interromper","F9")
@@ -1220,7 +1145,6 @@ class JarvisApp:
                         self.root.after(0, self.interrupt_btn.config, {"state":tk.DISABLED})
                         continue
 
-                    # ── Drena eco após Jarvis falar ───────────────────────
                     if self._just_spoke:
                         self.pill_mic.config(text="⬤ AGUARDANDO ECO...",fg=C_DIM)
                         time.sleep(0.4)
@@ -1230,14 +1154,11 @@ class JarvisApp:
                         self.pill_mic.config(text="⬤ OUVINDO...",fg=C_GREEN)
                         continue
 
-                    # (continua ouvindo mesmo processando — fala vai para a fila)
 
-                    # ── Escuta ────────────────────────────────────────────
                     try:
                         self.pill_mic.config(text="⬤ OUVINDO...",fg=C_GREEN)
                         audio = recognizer.listen(mic, timeout=6, phrase_time_limit=60)
                         if self.is_speaking: continue
-                        # Countdown visual de 2s de silêncio
                         for remaining in [2, 1]:
                             self.pill_mic.config(text=f"⬤ SILÊNCIO... {remaining}s",fg=C_AMBER)
                             time.sleep(0.5)
@@ -1251,7 +1172,6 @@ class JarvisApp:
                     except sr.UnknownValueError:
                         pass
                     except OSError:
-                        # Stream fechado — sai do loop silenciosamente
                         break
                     except Exception as e:
                         if "Stream" in str(e) or "closed" in str(e).lower():
@@ -1260,7 +1180,7 @@ class JarvisApp:
                         time.sleep(1)
 
         except Exception as e:
-            if self.is_mic_on:  # só loga se não foi desligado propositalmente
+            if self.is_mic_on:  
                 self.root.after(0,self.log,f"✗ Microfone: {e}","error")
         finally:
             self.is_mic_on = False
@@ -1269,18 +1189,15 @@ class JarvisApp:
             self.root.after(0, self.pill_mic.config,  {"text":"⬤ MIC OFF","fg":C_DIM})
             self.root.after(0, self.interrupt_btn.config, {"state":tk.DISABLED})
 
-    # ── Groq API ─────────────────────────────────────────────────────
     def process_input(self, text):
         if not self.client:
             self.log("✗ Conecte a API Key.","error"); return
-        # Enfileira — nunca descarta fala do Chefe
         try:
             self.input_queue.put_nowait(text)
         except queue.Full:
             try: self.input_queue.get_nowait()
             except: pass
             self.input_queue.put_nowait(text)
-        # Garante que o worker está rodando
         if not getattr(self, '_worker_running', False):
             threading.Thread(target=self._input_worker, daemon=True).start()
 
@@ -1291,7 +1208,6 @@ class JarvisApp:
                 text = self.input_queue.get(timeout=2)
                 self._call_groq(text)
             except queue.Empty:
-                # Fila ficou vazia — encerra worker
                 self._worker_running = False
                 break
 
@@ -1301,12 +1217,10 @@ class JarvisApp:
         try:
             text_lower=user_text.lower()
 
-            # 1️⃣ Tenta automação primeiro
             auto_result=run_automation(text_lower, original_text=user_text)
             if auto_result:
                 self.root.after(0, self.log, f"⚡ AUTO: {auto_result}", "auto")
 
-            # 2️⃣ Monta mensagem com contexto de interrupção se houver
             if self.was_interrupted and self.interrupted_text:
                 prompt=(f"Você estava falando isso quando o Chefe te interrompeu: \"{self.interrupted_text[:300]}\". "
                         f"O Chefe disse agora: \"{user_text}\". "
@@ -1320,16 +1234,13 @@ class JarvisApp:
             else:
                 prompt=user_text
 
-            # 3️⃣ Monta conteúdo — sessão atual por padrão, passado só se pedido
             content=[]
             if self.latest_ss_b64 and self.is_screen_on:
                 content.append({"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{self.latest_ss_b64}"}})
             content.append({"type":"text","text":prompt})
 
-            # Usa apenas a sessão ATUAL no contexto padrão
             recent = [{"role":m["role"],"content":m["content"]} for m in self.history[-30:]]
 
-            # Injeta histórico passado APENAS se Chefe pedir explicitamente
             past_keywords = ["você lembra","lembra quando","falamos antes","sessão anterior",
                              "da última vez","na outra vez","anteriormente","já falamos",
                              "conversa passada","me disse antes","você me disse"]
@@ -1340,7 +1251,6 @@ class JarvisApp:
                     role_label = "Chefe" if m["role"]=="user" else "JARVIS"
                     past_ctx.append(f"{role_label}: {m['content'][:200]}")
                 past_summary = "\n".join(past_ctx)
-                # Substitui o prompt com contexto histórico
                 content = []
                 if self.latest_ss_b64 and self.is_screen_on:
                     content.append({"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{self.latest_ss_b64}"}})
@@ -1352,7 +1262,6 @@ class JarvisApp:
 
             msgs=[{"role":"system","content":SYSTEM_PROMPT}]+recent+[{"role":"user","content":content}]
 
-            # 4️⃣ Streaming com fallback de modelos se rate limit
             FALLBACK_MODELS = [
                 model,
                 "llama-3.1-8b-instant",
@@ -1420,7 +1329,6 @@ class JarvisApp:
         self.chat_text.see(tk.END)
         self.chat_text.configure(state=tk.DISABLED)
 
-    # ── TTS ──────────────────────────────────────────────────────────
     def _setup_tts(self):
         try: pygame.mixer.init(frequency=22050,size=-16,channels=1,buffer=512); self.tts_ready=True
         except Exception as e: print(f"TTS init: {e}")
@@ -1482,7 +1390,6 @@ class JarvisApp:
             except: pass
         except Exception as e: print(f"TTS speak: {e}")
 
-    # ── Chat ─────────────────────────────────────────────────────────
     def log(self,message,tag="system"):
         ts=datetime.now().strftime("%H:%M:%S")
         self.chat_text.configure(state=tk.NORMAL)
@@ -1514,7 +1421,6 @@ class JarvisApp:
         self.log(f"Chefe: {text}","user")
         self.process_input(text)
 
-    # ── Run ──────────────────────────────────────────────────────────
     def run(self):
         self.root.protocol("WM_DELETE_WINDOW",self._on_close)
         self.log("◈ JARVIS v5.0 — Groq AI + Automação","system")
@@ -1524,7 +1430,6 @@ class JarvisApp:
 
     def _on_close(self):
         self.is_screen_on=False; self.is_mic_on=False
-        # Salva sessão atual no histórico persistente
         merged = self.past_history + self.history
         save_memory(self.memory); save_history(merged)
         time.sleep(0.15); self.root.destroy()
